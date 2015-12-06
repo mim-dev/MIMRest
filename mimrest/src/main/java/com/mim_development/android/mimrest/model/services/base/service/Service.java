@@ -1,7 +1,7 @@
 package com.mim_development.android.mimrest.model.services.base.service;
 
 
-import com.mim_development.android.mimrest.model.services.base.operation.BaseServiceOperation;
+import com.mim_development.android.mimrest.model.services.base.operation.ServiceOperation;
 import com.mim_development.android.mimrest.model.services.base.operation.callback.OperationCallback;
 import com.mim_development.android.mimrest.model.services.base.operation.response.OperationErrorResponse;
 import com.mim_development.android.mimrest.model.services.base.operation.response.OperationSuccessResponse;
@@ -48,7 +48,7 @@ public abstract class Service {
         operations = new HashMap<>(10);
     }
 
-    protected void addOperation(BaseServiceOperation op, ServiceCallback callback) {
+    protected void addOperation(ServiceOperation op, ServiceCallback callback) {
 
         UUID operationIdentifier = op.getIdentifier();
         OperationContainer opContainer = new OperationContainer(
@@ -88,7 +88,7 @@ public abstract class Service {
         return operationServiceCallback;
     }
 
-    protected UUID invokeOperation(BaseServiceOperation op, ServiceCallback callback){
+    protected UUID invokeOperation(ServiceOperation op, ServiceCallback callback){
         UUID identifier = op.getIdentifier();
         addOperation(op, callback);
         op.invoke();

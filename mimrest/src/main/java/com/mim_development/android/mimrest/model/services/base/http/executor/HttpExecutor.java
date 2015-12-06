@@ -8,17 +8,18 @@ import com.mim_development.android.mimrest.model.services.base.http.response.Htt
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.HttpURLConnection;
-import java.net.URL;
 import java.util.List;
 import java.util.Map;
 
 /**
- * Engine for executing a single HTTP request that does not have an associated payload.
+ * Engine for executing a single HTTP request on separate thread.
  */
-public class HttpExecutor extends BaseHttpExecutor implements Runnable {
+public class HttpExecutor implements Runnable {
 
     private static final String TAG = HttpExecutor.class.getCanonicalName();
+    private static final String CONTENT_LENGTH_HEADER_NAME = "Content-Length";
 
+    private HttpExecutorMonitor monitor;
     private HttpRequest request;
 
     /**
@@ -29,32 +30,8 @@ public class HttpExecutor extends BaseHttpExecutor implements Runnable {
     public HttpExecutor(
             final HttpRequest request,
             final HttpExecutorMonitor monitor) {
-        super(monitor);
+        this.monitor = monitor;
         this.request = request;
-    }
-
-    private String getConnectionString() {
-        return request.getConnectionString();
-    }
-
-    /**
-     *{@inheritDoc}
-     */
-    protected Map<String, String> getParameters() {
-        return request.getParameters();
-    }
-
-    /**
-     * Provides the headers to be added to the request.
-     * @return - headers to add to the request.
-     */
-    @Override
-    protected Map<String, String> getHeaders() {
-        return request.getHeaders();
-    }
-
-    private int getConnectionTimeoutInMillis() {
-        return request.getConnectionTimeoutInMillis();
     }
 
     /**
@@ -64,18 +41,10 @@ public class HttpExecutor extends BaseHttpExecutor implements Runnable {
     public void run() {
 
         HttpURLConnection connection = null;
-        HttpExecutorMonitor monitor = getMonitor();
 
         try {
 
-            URL url = new URL(getConnectionString() + buildQueryString());
-            connection = (HttpURLConnection) url.openConnection();
-
-            connection.setRequestMethod(request.getVerb());
-            addHeaders(connection);
-            connection.setConnectTimeout(getConnectionTimeoutInMillis());
-
-            connection.setDoInput(true);
+            connection = request.getHttpURLConnection();
             int responseCode = connection.getResponseCode();
             byte[] responsePayload;
 
@@ -111,5 +80,27 @@ public class HttpExecutor extends BaseHttpExecutor implements Runnable {
                 connection.disconnect();
             }
         }
+    }
+
+    protected byte[] processResponseContent(
+            Map<String, List<String >> responseHeaders, InputStream stream) throws IOException{
+
+        byte[] responseBytes;
+
+        List<String> contentLengthHeaderValues = responseHeaders.get(CONTENT_LENGTH_HEADER_NAME);
+
+        if(contentLengthHeaderValues == null || contentLengthHeaderValues.size() != 1){
+            responseBytes = new byte[0];
+        } else{
+            try {
+                int contentLength = Integer.parseInt(contentLengthHeaderValues.get(0));
+                responseBytes = new byte[contentLength];
+                stream.read(responseBytes, 0, contentLength);
+            } catch(NumberFormatException e){
+                responseBytes = new byte[0];
+            }
+        }
+
+        return responseBytes;
     }
 }
