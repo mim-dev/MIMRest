@@ -15,6 +15,12 @@ import java.util.UUID;
 
 public abstract class ServiceOperation  {
 
+    private static final String CONTENT_TYPE_HEADER_NAME = "Content-Type";
+    private static final String CONTENT_TYPE_HEADER_VALUE = "application/json";
+
+    private static final String ACCEPT_HEADER_NAME = "Accept";
+    private static final String ACCEPT_HEADER_VALUE = "application/json";
+
     private class HttpExecutorMonitorImpl implements HttpExecutorMonitor {
 
         private OperationResultPayloadProcessor payloadProcessor;
@@ -26,7 +32,7 @@ public abstract class ServiceOperation  {
 
         @Override
         public void result(HttpResponse response) {
-            if(callback != null){
+            if (callback != null && !isCancelled()) {
 
                 UUID operationIdentifier = getIdentifier();
                 int status = response.getStatus();
@@ -52,7 +58,7 @@ public abstract class ServiceOperation  {
 
         @Override
         public void error(Throwable throwable) {
-            if(callback != null){
+            if (callback != null && !isCancelled()) {
                 callback.error(new OperationErrorResponse(
                         getIdentifier(),
                         new OperationException("HTTP operation exception received.", throwable)));
@@ -62,9 +68,18 @@ public abstract class ServiceOperation  {
 
     protected OperationCallback callback;
     private UUID identifier;
+    private boolean cancelled;
 
     public UUID getIdentifier(){
         return identifier;
+    }
+
+    protected synchronized boolean isCancelled() {
+        return cancelled;
+    }
+
+    protected synchronized void setCancelled(boolean value) {
+        cancelled = value;
     }
 
     protected ServiceOperation(OperationCallback callback){
@@ -74,9 +89,13 @@ public abstract class ServiceOperation  {
 
     abstract protected OperationResultPayloadProcessor getOperationResultPayloadProcessor();
 
+    protected HttpExecutorMonitor getHttpExecutorMonitor() {
+        return new HttpExecutorMonitorImpl(getOperationResultPayloadProcessor());
+    }
+
     public void invoke(){
         HttpRequest request = getHttpRequest();
-        HttpExecutor executor = new HttpExecutor(request, new HttpExecutorMonitorImpl(getOperationResultPayloadProcessor()));
+        HttpExecutor executor = new HttpExecutor(request, getHttpExecutorMonitor());
         Thread executorThread = new Thread(executor);
         executorThread.start();
     }
@@ -85,12 +104,12 @@ public abstract class ServiceOperation  {
 
     protected Map<String, String> buildRequestHeaders(){
         Map<String, String> headerMap = new HashMap<>(2);
-        headerMap.put("Content-Type", "Application/JSON");
-        headerMap.put("Accept", "Application/JSON");
+        headerMap.put(CONTENT_TYPE_HEADER_NAME, CONTENT_TYPE_HEADER_VALUE);
+        headerMap.put(ACCEPT_HEADER_NAME, ACCEPT_HEADER_VALUE);
         return headerMap;
     }
 
     public void cancel(){
-        ;       // do nothing for now
+        setCancelled(true);
     }
 }

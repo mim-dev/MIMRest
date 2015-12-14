@@ -4,6 +4,7 @@ import com.mim_development.android.mimrest.model.services.base.operation.respons
 import com.mim_development.android.mimrest.model.services.base.operation.response.OperationSuccessResponse;
 
 public interface OperationCallback {
-    void success(OperationSuccessResponse response);
-    void error(OperationErrorResponse response);
+    void success(final OperationSuccessResponse response);
+
+    void error(final OperationErrorResponse response);
 }

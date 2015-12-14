@@ -6,6 +6,10 @@ import com.mim_development.android.mimrest.model.services.base.operation.callbac
 import com.mim_development.android.mimrest.model.services.base.operation.response.OperationErrorResponse;
 import com.mim_development.android.mimrest.model.services.base.operation.response.OperationSuccessResponse;
 import com.mim_development.android.mimrest.model.services.base.service.callback.ServiceCallback;
+import com.mim_development.android.mimrest.model.services.base.service.processors.MainThreadServiceErrorProcessor;
+import com.mim_development.android.mimrest.model.services.base.service.processors.MainThreadServiceSuccessProcessor;
+import com.mim_development.android.mimrest.model.services.base.service.response.ServiceErrorResponse;
+import com.mim_development.android.mimrest.model.services.base.service.response.ServiceSuccessResponse;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -19,29 +23,55 @@ public abstract class Service {
     protected OperationCallback getOperationCallback(){
         return new OperationCallback() {
             @Override
-            public void success(OperationSuccessResponse response) {
-                UUID operationIdentifier = response.getIdentifier();
+            public void success(final OperationSuccessResponse response) {
+                final UUID operationIdentifier = response.getIdentifier();
 
-                ServiceCallback serviceCallback
+                final ServiceCallback serviceCallback
                         = fetchCallbackAndDeleteOperation(operationIdentifier);
 
                 if (serviceCallback != null) {
-                    serviceCallback.success(operationIdentifier, response);
+                    getMainThreadServiceSuccessProcessor(
+                            operationIdentifier,
+                            response,
+                            serviceCallback).processResultOnMainThread();
                 }
             }
 
             @Override
-            public void error(OperationErrorResponse response) {
-                UUID operationIdentifier = response.getIdentifier();
+            public void error(final OperationErrorResponse response) {
+                final UUID operationIdentifier = response.getIdentifier();
 
-                ServiceCallback serviceCallback
+                final ServiceCallback serviceCallback
                         = fetchCallbackAndDeleteOperation(operationIdentifier);
 
                 if (serviceCallback != null) {
-                    serviceCallback.error(operationIdentifier, response);
+                    getMainThreadServiceErrorProcessor(
+                            operationIdentifier,
+                            response,
+                            serviceCallback).processResultOnMainThread();
                 }
             }
         };
+    }
+
+    protected MainThreadServiceSuccessProcessor getMainThreadServiceSuccessProcessor(
+            UUID operationIdentifier,
+            ServiceSuccessResponse serviceSuccessResponse,
+            ServiceCallback serviceCallback) {
+        return new MainThreadServiceSuccessProcessor(
+                operationIdentifier,
+                serviceSuccessResponse,
+                serviceCallback);
+    }
+
+    protected MainThreadServiceErrorProcessor getMainThreadServiceErrorProcessor(
+            UUID operationIdentifier,
+            ServiceErrorResponse serviceErrorResponse,
+            ServiceCallback serviceCallback) {
+        return new MainThreadServiceErrorProcessor(
+                operationIdentifier,
+                serviceErrorResponse,
+                serviceCallback);
     }
 
     protected Service(){
