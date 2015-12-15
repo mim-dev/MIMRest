@@ -18,18 +18,19 @@ import java.util.UUID;
 public abstract class Service {
 
     private Map<UUID, OperationContainer> operations;
-    private Object operationsMapLock = new Object();
+    private final Object operationsMapLock = new Object();
 
-    protected OperationCallback getOperationCallback(){
+    protected OperationCallback getOperationCallback() {
         return new OperationCallback() {
             @Override
             public void success(final OperationSuccessResponse response) {
                 final UUID operationIdentifier = response.getIdentifier();
 
-                final ServiceCallback serviceCallback
-                        = fetchCallbackAndDeleteOperation(operationIdentifier);
+                OperationContainer opContainer
+                        = fetchAndDeleteOperationContainer(operationIdentifier);
 
-                if (serviceCallback != null) {
+                if (opContainer != null) {
+                    final ServiceCallback serviceCallback = opContainer.getCallback();
                     getMainThreadServiceSuccessProcessor(
                             operationIdentifier,
                             response,
@@ -41,10 +42,11 @@ public abstract class Service {
             public void error(final OperationErrorResponse response) {
                 final UUID operationIdentifier = response.getIdentifier();
 
-                final ServiceCallback serviceCallback
-                        = fetchCallbackAndDeleteOperation(operationIdentifier);
+                OperationContainer opContainer
+                        = fetchAndDeleteOperationContainer(operationIdentifier);
 
-                if (serviceCallback != null) {
+                if (opContainer != null) {
+                    final ServiceCallback serviceCallback = opContainer.getCallback();
                     getMainThreadServiceErrorProcessor(
                             operationIdentifier,
                             response,
@@ -74,7 +76,7 @@ public abstract class Service {
                 serviceCallback);
     }
 
-    protected Service(){
+    protected Service() {
         operations = new HashMap<>(10);
     }
 
@@ -89,18 +91,9 @@ public abstract class Service {
         }
     }
 
-    protected void removeOperation(UUID operationIdentifier) {
-        synchronized (operationsMapLock) {
-            if (operations.containsKey(operationIdentifier)) {
-                operations.remove(operationIdentifier);
-            }
-        }
-    }
-
-    protected ServiceCallback fetchCallbackAndDeleteOperation(UUID operationIdentifier) {
+    protected OperationContainer fetchAndDeleteOperationContainer(UUID operationIdentifier) {
 
         OperationContainer opContainer = null;
-        ServiceCallback operationServiceCallback = null;
 
         synchronized (operationsMapLock) {
             if (operations.containsKey(operationIdentifier)) {
@@ -111,14 +104,10 @@ public abstract class Service {
             }
         }
 
-        if (opContainer != null) {
-            operationServiceCallback = opContainer.getCallback();
-        }
-
-        return operationServiceCallback;
+        return opContainer;
     }
 
-    protected UUID invokeOperation(ServiceOperation op, ServiceCallback callback){
+    protected UUID invokeOperation(ServiceOperation op, ServiceCallback callback) {
         UUID identifier = op.getIdentifier();
         addOperation(op, callback);
         op.invoke();
@@ -126,6 +115,10 @@ public abstract class Service {
     }
 
     public void cancelOperation(UUID operationIdentifier) {
-        removeOperation(operationIdentifier);
+        OperationContainer opContainer = fetchAndDeleteOperationContainer(operationIdentifier);
+        if (opContainer != null) {
+            opContainer.getOp().cancel();
+
+        }
     }
 }
