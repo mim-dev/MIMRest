@@ -1,5 +1,7 @@
 package com.mim_development.android.mimrest.model.services.base.http.connection;
 
+import com.mim_development.android.mimrest.utility.StringUtil;
+
 /**
  * HTTP connection elements
  */
@@ -29,15 +31,20 @@ public class HttpConnection {
     /**
      * Instantiates a new instance.
      * @param secure - flag indicating if the connection should be treated as a secure connection.
-     * @param server - server element. Value should not have leading or trailing path separators, i.e. '/'.
-     * @param path - path element. Value should not have leading or trailing path separators, i.e. '/'.
-     * @param action - action element. Value should not have leading or trailing path separators, i.e. '/'.
+     * @param server - server element which should not have leading or trailing path separators, i.e. '/' (required)
+     * @param path - path element which should not have leading or trailing path separators, i.e. '/' (optional)
+     * @param action - action element which should not have leading or trailing path separators, i.e. '/' (optional)
      */
     public HttpConnection(
             boolean secure,
             String server,
             String path,
             String action) {
+
+        if(StringUtil.isEmpty(server)){
+            throw new IllegalArgumentException("The server argument is required.");
+        }
+
         this.server = scrubPathElement(server);
         this.path = scrubPathElement(path);
         this.action = scrubPathElement(action);
@@ -61,7 +68,14 @@ public class HttpConnection {
      */
     @Override
     public String toString() {
-        String stringValue = (isSecure() ? "https://" : "http://") + getServer() + "/" + getPath() + "/" + getAction();
+        String stringValue;
+
+                if(StringUtil.isNotEmpty(getPath())){
+                    stringValue = (isSecure() ? "https://" : "http://") + getServer() + "/" + getPath() + "/" + getAction();
+                } else{
+                    stringValue = (isSecure() ? "https://" : "http://") + getServer() + "/" + getAction();
+                }
+
         return stringValue;
     }
 
