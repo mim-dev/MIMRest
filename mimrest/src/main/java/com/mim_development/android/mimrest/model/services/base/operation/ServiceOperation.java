@@ -5,6 +5,7 @@ import com.mim_development.android.mimrest.model.services.base.http.executor.Htt
 import com.mim_development.android.mimrest.model.services.base.http.executor.HttpExecutorMonitorImpl;
 import com.mim_development.android.mimrest.model.services.base.http.request.HttpRequest;
 import com.mim_development.android.mimrest.model.services.base.operation.callback.OperationCallback;
+import com.mim_development.android.mimrest.utility.StringUtil;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -74,19 +75,47 @@ public abstract class ServiceOperation {
 
     protected Map<String, String> buildRequestHeaders() {
         Map<String, String> headerMap = new HashMap<>(2);
-        headerMap.put(CONTENT_TYPE_HEADER_NAME, getContentTypeHeaderValue());
-        headerMap.put(ACCEPT_HEADER_NAME, getAcceptTypeHeaderValue());
+
+        String contentTypeHeaderValue = getContentTypeHeaderValue();
+        String acceptTypeHeaderValue = getAcceptTypeHeaderValue();
+
+        if (StringUtil.isNotEmpty(contentTypeHeaderValue)) {
+            headerMap.put(CONTENT_TYPE_HEADER_NAME, contentTypeHeaderValue);
+        }
+
+        if (StringUtil.isNotEmpty(acceptTypeHeaderValue)) {
+            headerMap.put(ACCEPT_HEADER_NAME, acceptTypeHeaderValue);
+        }
+
         return headerMap;
     }
 
+    /**
+     * Provides the value to be used for the Content-Type header.
+     * <p>
+     * Override to change default value.  Return StringUtil.EMPTY to exclude the Content-Type header from being added.
+     * </p>
+     *
+     * @return - the value to be used for the Content-Type header
+     */
     protected String getContentTypeHeaderValue() {
         return CONTENT_TYPE_HEADER_VALUE;
     }
 
+    /**
+     * Provides the value to be used for the Accept-Type header.
+     * <p>
+     *     Override to change default value.  Return StringUtil.EMPTY to exclude the Accept-Type header from being added.
+     * </p>
+     * @return - the value to be used for the Accept-Type header
+     */
     protected String getAcceptTypeHeaderValue() {
         return ACCEPT_HEADER_VALUE;
     }
 
+    /**
+     * Sets the cancelled state of the operation to true
+     */
     public void cancel() {
         setCancelled(true);
     }
